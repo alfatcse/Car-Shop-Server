@@ -1,22 +1,43 @@
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
-const {MongoClient, ServerApiVersion, ObjectId} = require('mongodb');
-const port=process.env.PORT ||5006;
-const app=express();
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
+const port = process.env.PORT || 5006;
+const app = express();
 app.use(cors());
 app.use(express.json());
-app.get('/',(req,res)=>{
+app.get('/', (req, res) => {
     res.send('server in running')
 })
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.icjdeya.mongodb.net/?retryWrites=true&w=majority`;
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true, serverApi: ServerApiVersion.v1 });
-client.connect(err => {
-  const collection = client.db("test").collection("devices");
-  // perform actions on the collection object
-  client.close();
-});
+async function run() {
+    try { 
+         const serviceCollection=client.db('geniusCar').collection('services');
+         const orderCollection=client.db('geniusCar').collection('order');
+         app.get('/service',async(req,res)=>{
+            const query={};
+            const cursor=serviceCollection.find(query);
+            const services=await cursor.toArray();
+            res.send(services);
+         })
+         app.get('/service/:id',async(req,res)=>{
+            const id=req.params.id;
+            const query={_id:ObjectId(id)};
+            const service=await serviceCollection.findOne(query);
+            res.send(service);
+         })
+         //order api
+         app.post('/order',async(req,res)=>{
+            const order=req.body;
+            const result=await orderCollection.insertOne(order);
+            res.send(result);
+         })
+    } finally {
 
-app.listen(port,()=>{
-    console.log('listening ',port);
+     }
+}
+run().catch(e => console.log(e));
+app.listen(port, () => {
+    console.log('listening ', port);
 });
