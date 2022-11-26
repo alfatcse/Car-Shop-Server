@@ -52,7 +52,8 @@ async function run() {
             res.send({token});
         })
         app.get('/service', async (req, res) => {
-            const query = {};
+            //const query = {$and: [{price:{$lt:100}},{price:{$gt:30}}]};
+            const query={};
             const order=req.query.order;
             console.log(order);
             const cursor = serviceCollection.find(query).sort({price:order});
