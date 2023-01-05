@@ -1,6 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-const jwt=require('jsonwebtoken');
+const jwt = require('jsonwebtoken');
 require('dotenv').config();
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const port = process.env.PORT || 5006;
@@ -12,19 +12,19 @@ app.get('/', (req, res) => {
 })
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.icjdeya.mongodb.net/?retryWrites=true&w=majority`;
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true, serverApi: ServerApiVersion.v1 });
-function verifyJWT(req,res,next){
-     const authHeader=req.headers.authorization;
-     if(!authHeader){
-        return res.status(401).send({message:'unauthorized access'});
-     }
-     const token=authHeader.split(' ')[1];
-     jwt.verify(token,process.env.ACCESS_TOKEN_SECRET,function(err,decoded){
-        if(err){
-            return res.status(401).send({message:'unauthorized access'});
+function verifyJWT(req, res, next) {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+        return res.status(401).send({ message: 'unauthorized access' });
+    }
+    const token = authHeader.split(' ')[1];
+    jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, function (err, decoded) {
+        if (err) {
+            return res.status(401).send({ message: 'unauthorized access' });
         }
-        req.decoded=decoded;
+        req.decoded = decoded;
         next();
-     })
+    })
 }
 // function verifyJWT(req,res,next){
 //     const authHeader= req.headers.authorization;
@@ -45,18 +45,29 @@ async function run() {
         const serviceCollection = client.db('geniusCar').collection('services');
         const orderCollection = client.db('geniusCar').collection('order');
         //jwt
-        app.post('/jwt',(req,res)=>{
-            const user=req.body;
+        app.post('/jwt', (req, res) => {
+            const user = req.body;
             console.log(user);
-            const token=jwt.sign(user,process.env.ACCESS_TOKEN_SECRET,{expiresIn:'5h'});
-            res.send({token});
+            const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '5h' });
+            res.send({ token });
         })
         app.get('/service', async (req, res) => {
             //const query = {$and: [{price:{$lt:100}},{price:{$gt:30}}]};
-            const query={};
-            const order=req.query.order;
+            const search = req.query.search;
+            console.log(search);
+            let query = {
+
+            };
+            if (search.length) {
+                query = {
+                    $text: {
+                        $search: search
+                    }
+                }
+            }
+            const order = req.query.order;
             console.log(order);
-            const cursor = serviceCollection.find(query).sort({price:order});
+            const cursor = serviceCollection.find(query).sort({ price: order });
             const services = await cursor.toArray();
             res.send(services);
         })
@@ -67,17 +78,16 @@ async function run() {
             res.send(service);
         })
         //order api
-        app.post('/orders',verifyJWT,async (req, res) => {
+        app.post('/orders', verifyJWT, async (req, res) => {
             const order = req.body;
             const result = await orderCollection.insertOne(order);
             res.send(result);
         })
-        app.get('/orders', verifyJWT,async (req, res) => {
-            const decoded=req.decoded;
-            console.log('inside order api',decoded);
-            if(decoded.email!==req.query.email)
-            {
-                res.send({message:'unauthorized access'});
+        app.get('/orders', verifyJWT, async (req, res) => {
+            const decoded = req.decoded;
+            console.log('inside order api', decoded);
+            if (decoded.email !== req.query.email) {
+                res.send({ message: 'unauthorized access' });
             }
             console.log(req.headers.authorization);
             let query = {};
@@ -90,22 +100,22 @@ async function run() {
             const orders = await cursor.toArray();
             res.send(orders);
         })
-        app.delete('/orders/:id', verifyJWT,async (req, res) => {
+        app.delete('/orders/:id', verifyJWT, async (req, res) => {
             const id = req.params.id;
             const query = { _id: ObjectId(id) };
-            const result=await orderCollection.deleteOne(query);
+            const result = await orderCollection.deleteOne(query);
             res.send(result);
         })
-        app.patch('/orders/:id',verifyJWT,async(req,res)=>{
-            const id=req.params.id;
-            const status=req.body.status;
-            const query={_id:ObjectId(id)};
-            const updatedDoc={
-                $set:{
-                    status:status
+        app.patch('/orders/:id', verifyJWT, async (req, res) => {
+            const id = req.params.id;
+            const status = req.body.status;
+            const query = { _id: ObjectId(id) };
+            const updatedDoc = {
+                $set: {
+                    status: status
                 }
             }
-            const result=await orderCollection.updateOne(query,updatedDoc);
+            const result = await orderCollection.updateOne(query, updatedDoc);
             res.send(result);
         })
     } finally {
